@@ -1,12 +1,13 @@
 import json
+import os
 import uuid
 
 from models import command_to_dict, event_to_dict
 
 
-BROKER = "localhost"
-PORT = 1883
-DEVICE_ID = "tablet_1"
+BROKER = os.getenv("CUM_BROKER", "localhost")
+PORT = int(os.getenv("CUM_PORT", "1883"))
+DEVICE_ID = "device1"
 SENDER_ID = DEVICE_ID
 
 COMMAND_TOPIC = f"cum/command/{DEVICE_ID}"
