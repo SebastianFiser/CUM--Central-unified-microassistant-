@@ -11,7 +11,7 @@ import paho.mqtt.client as mqtt
 
 from mqtt_client import BROKER, COMMAND_TOPIC, EVENT_TOPIC, PORT
 from router import route_message
-from controller import ping_device, send_msg
+from controller import ping_device, send_msg, send_brightness
 
 
 PROMPT = "Enter command (type 'exit' to quit): "
@@ -61,6 +61,19 @@ def console():
         cmd_lower = command.lower()
         if cmd_lower == "exit":
             break
+        elif cmd_lower.startswith("brightness "):
+            try:
+                short_id, value_str = command.split(" ", 2)[1:]
+                value = int(value_str)
+                result = send_brightness(client, short_id, value)
+                if result:
+                    safe_log(f"Brightness command sent to [{short_id}] with value {value}")
+                else:
+                    safe_log("error sending brightness command")
+            except ValueError:
+                safe_log("Invalid brightness value. Please enter an integer between 0 and 100.")
+            except Exception as e:
+                safe_log(f"Error processing brightness command: {e}")
         elif cmd_lower.startswith("msg "):
             short_id, text = command.split(" ", 2)[1:]
             result = send_msg(client, short_id, text)

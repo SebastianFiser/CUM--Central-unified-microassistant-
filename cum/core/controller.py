@@ -37,3 +37,29 @@ def send_msg(client, short_id, text):
     command_msg = command_to_dict(command_id, "msg", payload, SENDER_ID)
     publish(client, COMMAND_TOPIC, command_msg)
     return True
+
+def send_brightness(client, short_id, value):
+    if not value or (value < 0) or (value > 100):
+        print("Enter a valid value")
+        return False
+    device_id = resolve_device_id(short_id)
+    if not device_id:
+        return False
+    device = get_device(device_id)
+    session_id = device.get("session_id") if device else ""
+    payload = {"device_id": device_id, "session_id": session_id, "value": value}
+    command_id = generate_msg_id()
+    command_msg = command_to_dict(command_id, "brightness", payload, SENDER_ID)
+    publish(client, COMMAND_TOPIC, command_msg)
+
+def send_register(client, short_id, meta= None):
+    command_id = generate_msg_id()
+    device_id = resolve_device_id(short_id)
+    if not device_id:
+        print("Device not found")
+        return False
+    device = get_device(device_id)
+    session_id = device.get("session_id") if device else ""
+    payload = {"device_id": device_id, "session_id": session_id}
+    msg = command_to_dict(command_id, "register", payload, SENDER_ID)
+    publish(client, COMMAND_TOPIC, msg)
