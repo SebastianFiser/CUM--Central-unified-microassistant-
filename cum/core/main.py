@@ -9,9 +9,9 @@ import readline
 
 import paho.mqtt.client as mqtt
 
-from mqtt_client import BROKER, COMMAND_TOPIC, EVENT_TOPIC, PORT, send_msg, send_ping
+from mqtt_client import BROKER, COMMAND_TOPIC, EVENT_TOPIC, PORT
 from router import route_message
-from controller import ping_device
+from controller import ping_device, send_msg
 
 
 PROMPT = "Enter command (type 'exit' to quit): "
@@ -61,6 +61,13 @@ def console():
         cmd_lower = command.lower()
         if cmd_lower == "exit":
             break
+        elif cmd_lower.startswith("msg "):
+            short_id, text = command.split(" ", 2)[1:]
+            result = send_msg(client, short_id, text)
+            if result:
+                safe_log(f"Message sent to [{short_id}]: {text}")
+            else:
+                safe_log("error sending message")
         elif cmd_lower.startswith("ping "):
             # Mířený ping podle short_id přes controller
             short_id = command.split(" ", 1)[1].strip()
@@ -116,8 +123,6 @@ client.subscribe(COMMAND_TOPIC)
 client.loop_start()
 
 time.sleep(2)
- 
-send_msg(client, "core has started")
 status_thread = threading.Thread(target=check_devices_status, daemon=True)
 status_thread.start()
 console()

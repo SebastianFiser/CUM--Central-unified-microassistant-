@@ -86,6 +86,7 @@ def main(device_id, core_id, broker, port):
         print(f"[{device_id}] sent register")
 
     def on_message(client, userdata, msg):
+        print("RAW ONCOMING:", msg.payload.decode())
         data = json.loads(msg.payload.decode())
         if data.get("sender_id") == device_id:
             return

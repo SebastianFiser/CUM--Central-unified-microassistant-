@@ -21,8 +21,19 @@ def ping_device(client, short_id):
     session_id = device.get("session_id") if device else ""
     payload = {"device_id": device_id, "session_id": session_id}
     # Build the full command dict here
-    import uuid
-    command_id = str(uuid.uuid4())
+    command_id = generate_msg_id()
     command_msg = command_to_dict(command_id, "ping", payload, SENDER_ID)
+    publish(client, COMMAND_TOPIC, command_msg)
+    return True
+
+def send_msg(client, short_id, text):
+    device_id = resolve_device_id(short_id)
+    if not device_id:
+        return False
+    device = get_device(device_id)
+    session_id = device.get("session_id") if device else ""
+    payload = {"device_id": device_id, "session_id": session_id, "text": text}
+    command_id = generate_msg_id()
+    command_msg = command_to_dict(command_id, "msg", payload, SENDER_ID)
     publish(client, COMMAND_TOPIC, command_msg)
     return True
