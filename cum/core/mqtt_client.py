@@ -13,6 +13,9 @@ SENDER_ID = DEVICE_ID
 COMMAND_TOPIC = f"cum/command/{DEVICE_ID}"
 EVENT_TOPIC = f"cum/event/{DEVICE_ID}"
 
+def publish(client, topic, payload):
+    client.publish(topic, json.dumps(payload))
+    print("PUBLISH:", topic, payload)
 
 def make_id(message_id=None):
 	return message_id or str(uuid.uuid4())

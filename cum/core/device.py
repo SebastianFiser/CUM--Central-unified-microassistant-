@@ -2,12 +2,30 @@ import json
 import time
 import uuid
 import argparse
+import socket
 import paho.mqtt.client as mqtt
+from pathlib import Path
 
 BROKER = "192.168.0.116"
 PORT = 1883
 HEARTBEAT_INTERVAL_SECONDS = 5
+DEVICE_ID_FILE = Path(__file__).with_name("device_id.txt")
+SESSION_ID = str(uuid.uuid4())[:8]
 
+def generate_device_id(prefix="device"):
+    host = socket.gethostname().split(".")[0]
+    return f"{prefix}-{host}-{uuid.uuid4().hex[:8]}"
+
+def load_or_create_device_id(path=DEVICE_ID_FILE, prefix="device"):
+    if path.exists():
+        stored = path.read_text(encoding="utf-8").strip()
+        if stored:
+            return stored
+    
+    host = socket.gethostname().split(".")[0]
+    new_id = f"{prefix}-{host}-{uuid.uuid4().hex[:8]}"
+    path.write_text(new_id + "\n", encoding="utf-8")
+    return new_id
 
 def build_command_topic(core_id):
     return f"cum/command/{core_id}"
@@ -21,6 +39,7 @@ def publish_register(client, command_topic, device_id):
     client.publish(command_topic, json.dumps({
         "id": str(uuid.uuid4()),
         "sender_id": device_id,
+        "session_id": SESSION_ID,
         "type": "command",
         "action": "register",
         "payload": {
@@ -36,6 +55,7 @@ def publish_heartbeat(client, command_topic, device_id):
     client.publish(command_topic, json.dumps({
         "id": str(uuid.uuid4()),
         "sender_id": device_id,
+        "session_id": SESSION_ID,
         "type": "command",
         "action": "heartbeat",
         "payload": {
@@ -48,6 +68,7 @@ def publish_pong(client, event_topic, device_id, message_id):
     client.publish(event_topic, json.dumps({
         "id": message_id,
         "sender_id": device_id,
+        "session_id": SESSION_ID,
         "type": "event",
         "event": "pong",
         "payload": {}
@@ -59,7 +80,7 @@ def main(device_id, core_id, broker, port):
     event_topic = build_event_topic(core_id)
 
     def on_connect(client, userdata, flags, rc):
-        print(f"[{device_id}] connected rc={rc}")
+        print(f"[{device_id}] connected rc={rc} session={SESSION_ID}")
         client.subscribe(command_topic)
         publish_register(client, command_topic, device_id)
         print(f"[{device_id}] sent register")
@@ -94,10 +115,16 @@ def main(device_id, core_id, broker, port):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple MQTT device simulator")
-    parser.add_argument("--device-id", default="mobile_app", help="Unique device id")
+    parser.add_argument("--device-id", default=None, help="Unique device id (if omitted, generated automatically)")
     parser.add_argument("--core-id", default="device1", help="Core topic id")
     parser.add_argument("--broker", default=BROKER, help="MQTT broker host")
     parser.add_argument("--port", type=int, default=PORT, help="MQTT broker port")
     args = parser.parse_args()
+
+    if not args.device_id:
+        args.device_id = load_or_create_device_id()
+        print(f"loaded device_id: {args.device_id}")
+    else:
+        DEVICE_ID_FILE.write_text(args.device_id + "\n", encoding="utf-8")
 
     main(args.device_id, args.core_id, args.broker, args.port)
