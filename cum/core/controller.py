@@ -63,3 +63,27 @@ def send_register(client, short_id, meta= None):
     payload = {"device_id": device_id, "session_id": session_id}
     msg = command_to_dict(command_id, "register", payload, SENDER_ID)
     publish(client, COMMAND_TOPIC, msg)
+
+def send_heartbeat(client, short_id):
+    command_id = generate_msg_id()
+    device_id = resolve_device_id(short_id)
+    if not device_id:
+        print("Device not found")
+        return False
+    device = get_device(device_id)
+    session_id = device.get("session_id") if device else ""
+    payload = {"device_id": device_id, "session_id": session_id}
+    msg = command_to_dict(command_id, "heartbeat", payload, SENDER_ID)
+    publish(client, COMMAND_TOPIC, msg)
+
+def send_status_request(client, short_id):
+    command_id = generate_msg_id()
+    device_id = resolve_device_id(short_id)
+    if not device_id:
+        print(f"device {short_id} not found")
+        return False
+    device = get_device(device_id)
+    session_id = device.get("session_id") if device else ""
+    payload = {"device_id": device_id, "session_id": session_id}
+    msg = command_to_dict(command_id, "status_request", payload, SENDER_ID)
+    publish(client, COMMAND_TOPIC, msg)
