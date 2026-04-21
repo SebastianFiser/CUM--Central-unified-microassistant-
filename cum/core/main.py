@@ -11,7 +11,7 @@ import paho.mqtt.client as mqtt
 
 from mqtt_client import BROKER, COMMAND_TOPIC, EVENT_TOPIC, PORT
 from router import route_message
-from controller import ping_device, send_msg, send_brightness
+import controller
 
 
 PROMPT = "Enter command (type 'exit' to quit): "
@@ -65,7 +65,7 @@ def console():
             try:
                 short_id, value_str = command.split(" ", 2)[1:]
                 value = int(value_str)
-                result = send_brightness(client, short_id, value)
+                result = controller.send_brightness(client, short_id, value)
                 if result:
                     safe_log(f"Brightness command sent to [{short_id}] with value {value}")
                 else:
@@ -76,7 +76,7 @@ def console():
                 safe_log(f"Error processing brightness command: {e}")
         elif cmd_lower.startswith("msg "):
             short_id, text = command.split(" ", 2)[1:]
-            result = send_msg(client, short_id, text)
+            result = controller.send_msg(client, short_id, text)
             if result:
                 safe_log(f"Message sent to [{short_id}]: {text}")
             else:
@@ -84,7 +84,7 @@ def console():
         elif cmd_lower.startswith("ping "):
             # Mířený ping podle short_id přes controller
             short_id = command.split(" ", 1)[1].strip()
-            result = ping_device(client, short_id)
+            result = controller.ping_device(client, short_id)
             if result:
                 safe_log(f"Targeted ping sent to [{short_id}]")
             else:
@@ -110,7 +110,8 @@ def console():
             else:
                 safe_log("No devices registered")
         elif cmd_lower.startswith("status "):
-            device_id = command.split(" ", 1)[1]
+            short_id = command.split(" ", 1)[1]
+            device_id = controller.resolve_device_id(short_id)
             from registry import get_device
             device = get_device(device_id)
             if device:
