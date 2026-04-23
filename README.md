@@ -4,6 +4,8 @@
 
 **CUM** is an open platform for managing, controlling, and automating devices in your home or business using AI and a central console.
 
+DISCLAIOMER: README.MD IS a projection of FINISHED PROJECT. not according to reality 
+
 ---
 
 ## Key Features
