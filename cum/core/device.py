@@ -5,9 +5,15 @@ import argparse
 import socket
 import paho.mqtt.client as mqtt
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
-BROKER = "192.168.0.116"
-PORT = 1883
+load_dotenv()
+
+BROKER = os.getenv("HIVEMQ_HOST")
+PORT = int(os.getenv("HIVEMQ_PORT"))
+USERNAME = os.getenv("HIVEMQ_USERNAME")
+PASSWORD = os.getenv("HIVEMQ_PASSWORD")
 HEARTBEAT_INTERVAL_SECONDS = 5
 DEVICE_ID_FILE = Path(__file__).with_name("device_id.txt")
 SESSION_ID = str(uuid.uuid4())[:8]
@@ -98,6 +104,9 @@ def main(device_id, core_id, broker, port):
             print(f"[{device_id}] pong sent id={message_id}")
 
     client = mqtt.Client()
+    if USERNAME and PASSWORD:
+        client.username_pw_set(USERNAME, PASSWORD)
+    client.tls_set()  # Povolit TLS/SSL (důležité pro HiveMQ Cloud)
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(broker, port, 60)
@@ -117,7 +126,7 @@ def main(device_id, core_id, broker, port):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple MQTT device simulator")
     parser.add_argument("--device-id", default=None, help="Unique device id (if omitted, generated automatically)")
-    parser.add_argument("--core-id", default="device1", help="Core topic id")
+    parser.add_argument("--core-id", default="core", help="Core topic id")
     parser.add_argument("--broker", default=BROKER, help="MQTT broker host")
     parser.add_argument("--port", type=int, default=PORT, help="MQTT broker port")
     args = parser.parse_args()

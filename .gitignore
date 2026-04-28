@@ -208,3 +208,6 @@ __marimo__/
 
 #device id text file
 /device_id.txt
+#env file
+.env
+.env.example
