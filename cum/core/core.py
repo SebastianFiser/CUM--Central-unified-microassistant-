@@ -14,6 +14,8 @@ from router import route_message
 import controller
 
 
+
+
 PROMPT = "Enter command (type 'exit' to quit): "
 _print_lock = threading.Lock()
 _log_incoming = threading.Event()
@@ -127,13 +129,15 @@ def console():
         else:
             safe_log("Unknown command")
 
+from mqtt_client import USERNAME, PASSWORD
 client = mqtt.Client()
+if USERNAME and PASSWORD:
+    client.username_pw_set(USERNAME, PASSWORD)
+client.tls_set()  # Povolit TLS/SSL (důležité pro HiveMQ Cloud)
 client.on_connect = on_connect
 client.on_message = on_message
-
 client.connect(BROKER, PORT, 60)
 client.subscribe(COMMAND_TOPIC)
-
 client.loop_start()
 
 time.sleep(2)

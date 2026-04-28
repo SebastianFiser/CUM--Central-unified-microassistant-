@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>MQTT WebSocket Test</title>
+  </head>
+  <body>
+    <h1>MQTT WebSocket Test</h1>
+    <p>Open DevTools Console to see logs.</p>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+
+
+
+
+    <script>
+      (async function() {
+        console.log('MQTT test page starting — loading .env if present');
+
+        async function loadEnv() {
+          try {
+            const res = await fetch('./.env');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const txt = await res.text();
+            const env = {};
+            txt.split(/\r?\n/).forEach(line => {
+              line = line.trim();
+              if (!line || line.startsWith('#')) return;
+              const idx = line.indexOf('=');
+              if (idx === -1) return;
+              const key = line.substring(0, idx).trim();
+              const val = line.substring(idx + 1).trim();
+              env[key] = val;
+            });
+            return env;
+          } catch (e) {
+            console.warn('Could not load .env:', e);
+            return null;
+          }
+        }
+
+        const env = await loadEnv();
+        let SERVER_URI = null;
+        let USERNAME = null;
+        let PASSWORD = null;
+
+        if (env) {
+          USERNAME = env.HIVEMQ_USERNAME;
+          PASSWORD = env.HIVEMQ_PASSWORD;
+          if (env.HIVEMQ_WS) {
+            SERVER_URI = env.HIVEMQ_WS;
+          } else if (env.HIVEMQ_HOST) {
+            const host = env.HIVEMQ_HOST;
+            const port = env.HIVEMQ_WEBSOCKET_PORT || env.HIVEMQ_PORT || '8884';
+            SERVER_URI = 'wss://' + host + ':' + port + '/mqtt';
+          }
+        }
+
+        if (!SERVER_URI) {
+          console.error('SERVER_URI not configured. Please add .env or set HIVEMQ_WS/HIVEMQ_HOST in the file.');
+          return;
+        }
+
+        const options = {
+          username: USERNAME,
+          password: PASSWORD,
+          clientId: 'webtest-' + Math.random().toString(16).substr(2, 8),
+          protocolId: 'MQTT',
+          protocolVersion: 4,
+          clean: true,
+        };
+
+        console.log('Attempting connect to', SERVER_URI, 'clientId', options.clientId);
+        const client = mqtt.connect(SERVER_URI, options);
+
+        client.on('connect', function () {
+          console.log('mqtt.js connect OK', client.options);
+          const payload = JSON.stringify({ source: 'mqtt.js', time: new Date().toISOString() });
+          client.publish('cum/debug/webtest', payload, {}, function (err) {
+            if (err) console.error('publish err', err);
+            else console.log('publish ok', payload);
+          });
+        });
+
+        client.on('reconnect', () => console.log('mqtt.js reconnect'));
+        client.on('error', (e) => console.error('mqtt.js error', e));
+        client.on('close', () => console.log('mqtt.js close'));
+        client.on('offline', () => console.log('mqtt.js offline'));
+        client.on('message', (topic, payload) => console.log('mqtt.js msg', topic, payload.toString()));
+      })();
+    </script>
+  </body>
+</html>

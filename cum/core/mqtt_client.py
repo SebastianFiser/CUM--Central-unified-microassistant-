@@ -1,13 +1,17 @@
 import json
 import os
 import uuid
+from dotenv import load_dotenv
 
 from models import command_to_dict, event_to_dict
 
+load_dotenv()
 
-BROKER = os.getenv("CUM_BROKER", "localhost")
-PORT = int(os.getenv("CUM_PORT", "1883"))
-DEVICE_ID = "device1"
+BROKER = os.getenv("HIVEMQ_HOST")
+PORT = int(os.getenv("HIVEMQ_PORT"))
+USERNAME = os.getenv("HIVEMQ_USERNAME")
+PASSWORD = os.getenv("HIVEMQ_PASSWORD")
+DEVICE_ID = "core"
 SENDER_ID = DEVICE_ID
 
 COMMAND_TOPIC = f"cum/command/{DEVICE_ID}"
