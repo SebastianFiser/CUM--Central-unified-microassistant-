@@ -11,7 +11,7 @@ class DeviceRecord:
         self.meta = {}
         if short_id is not None:
             self.meta["short_id"] = short_id
-
+#somewhere here is the bug hiding
     def to_dict(self):
         return {
             "device_id": self.device_id,

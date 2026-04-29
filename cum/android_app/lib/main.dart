@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'screens/FancyA.dart';
 import 'screens/FancyB.dart';
 
-var uuid = Uuid();
+var uuid = const Uuid();
 String device_id = 'flutter_device_${make_id()}';
 late String SenderID;
 
@@ -34,7 +34,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CUM Flutter App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: Colors.blue[50],
+          selectedItemColor: Colors.blue[800],
+          unselectedItemColor: Colors.blue[300],
+          selectedIconTheme: IconThemeData(size: 24, color: Colors.blue[800]),
+          unselectedIconTheme: IconThemeData(size: 20, color: Colors.blue[300]),
+          selectedLabelStyle: TextStyle(color: Colors.blue[800], fontSize: 12),
+          unselectedLabelStyle: TextStyle(
+            color: Colors.blue[300],
+            fontSize: 10,
+          ),
+        ),
+      ),
       home: const HomePage(),
     );
   }
@@ -87,6 +101,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class ChannelFeed extends StatefulWidget {
+  const ChannelFeed({super.key});
+
   @override
   _ChannelFeedState createState() => _ChannelFeedState();
 }
@@ -126,6 +142,8 @@ class _ChannelFeedState extends State<ChannelFeed> {
 }
 
 class ConsoleScreen extends StatefulWidget {
+  const ConsoleScreen({super.key});
+
   @override
   _ConsoleScreenState createState() => _ConsoleScreenState();
 }
@@ -169,14 +187,14 @@ class _ConsoleScreenState extends State<ConsoleScreen> {
               child: TextField(
                 controller: _ctrl,
                 onSubmitted: (_) => _send(),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Enter command',
                   border: OutlineInputBorder(),
                 ),
               ),
             ),
-            SizedBox(width: 8),
-            ElevatedButton(onPressed: _send, child: Text('Send')),
+            const SizedBox(width: 8),
+            ElevatedButton(onPressed: _send, child: const Text('Send')),
           ],
         ),
       ),
@@ -185,6 +203,8 @@ class _ConsoleScreenState extends State<ConsoleScreen> {
 }
 
 class FancyA extends StatelessWidget {
+  const FancyA({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const Center(child: Text('Fancy A (placeholder)'));
@@ -192,6 +212,8 @@ class FancyA extends StatelessWidget {
 }
 
 class FancyB extends StatelessWidget {
+  const FancyB({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const Center(child: Text('Fancy B (placeholder)'));
