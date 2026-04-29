@@ -247,6 +247,10 @@ String getSessionId() {
   return _sessionId!;
 }
 
+String? getDeviceId() {
+  return _deviceId ?? _lastClientId;
+}
+
 //Generates session ID ONCE ONLY (needed for heartbeat logic) why isnt it working ffs
 void disconnect() {
   try {

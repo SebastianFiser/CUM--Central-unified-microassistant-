@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import '../mqtt_client.dart';
 import '../message_builder.dart';
+import '../incoming_handler.dart';
 
 class DeviceList extends StatefulWidget {
   const DeviceList({super.key});
@@ -14,12 +15,33 @@ class DeviceList extends StatefulWidget {
 
 class _DeviceListState extends State<DeviceList> {
   final Map<String, Map<String, dynamic>> _devices = {};
-  StreamSubscription<Map<String, String>>? _sub;
+
+  // handlers we register on incomingHandler
+  void _onDeviceRegistered(MsgMap m) {
+    final did = (m['payload'] as Map?)?['device_id'] as String?;
+    if (did != null) _upsertDevice(did, {'status': 'online'});
+  }
+
+  void _onHeartbeatAck(MsgMap m) {
+    final did = (m['payload'] as Map?)?['device_id'] as String?;
+    if (did != null) _upsertDevice(did, {'status': 'online'});
+  }
 
   @override
   void initState() {
     super.initState();
-    _sub = mqttMessageStream.listen(_handleMessage);
+    // use centralized incoming handler
+    incomingHandler.onAction('device_registered', _onDeviceRegistered);
+    incomingHandler.onAction('heartbeat_ack', _onHeartbeatAck);
+    // also listen to command actions that indicate device presence
+    incomingHandler.onAction('register', (m) {
+      final did = (m['payload'] as Map?)?['device_id'] as String?;
+      if (did != null) _upsertDevice(did, {'status': 'online'});
+    });
+    incomingHandler.onAction('heartbeat', (m) {
+      final did = (m['payload'] as Map?)?['device_id'] as String?;
+      if (did != null) _upsertDevice(did, {'status': 'online'});
+    });
   }
 
   void _handleMessage(Map<String, String> m) {
@@ -73,8 +95,11 @@ class _DeviceListState extends State<DeviceList> {
 
   @override
   void dispose() {
-    _sub?.cancel();
-    _sub = null;
+    // remove handlers
+    incomingHandler.offAction('device_registered', _onDeviceRegistered);
+    incomingHandler.offAction('heartbeat_ack', _onHeartbeatAck);
+    incomingHandler.offAction('register', (m) {});
+    incomingHandler.offAction('heartbeat', (m) {});
     super.dispose();
   }
 
@@ -85,12 +110,18 @@ class _DeviceListState extends State<DeviceList> {
 
   @override
   Widget build(BuildContext context) {
-    final ids = _devices.keys.toList()..sort();
+    final allIds = _devices.keys.toList()..sort();
+    final local = getDeviceId();
+    // show all devices except the local app instance; ensure `core` is present
+    final ids = allIds.where((id) => id != local).toList();
+    if (!ids.contains('core')) ids.insert(0, 'core');
     return ListView.builder(
       itemCount: ids.length,
       itemBuilder: (_, i) {
         final id = ids[i];
-        final info = _devices[id]!;
+        final info = _devices.containsKey(id)
+            ? _devices[id]!
+            : {'device_id': id, 'status': 'offline', 'last_seen': null};
         final last = info['last_seen'] as DateTime?;
         final status = info['status'] as String? ?? 'unknown';
         return ListTile(
@@ -101,19 +132,41 @@ class _DeviceListState extends State<DeviceList> {
           title: Text(id),
           subtitle: Text('status: $status • Last: ${_formatTime(last)}'),
           trailing: IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () {
+            icon: const Icon(Icons.send_outlined),
+            onPressed: () async {
               final session = getSessionId();
+              final msgId = makeId();
               final msgMap = buildPing(
                 deviceId: id,
                 senderId: 'ui',
                 sessionId: session,
+                messageId: msgId,
               );
               final msg = jsonEncode(msgMap);
               Publish('cum/command/core', msg, qos: MqttQos.atLeastOnce);
+
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text('Ping sent to $id')));
+
+              // await pong reply matching message id
+              try {
+                final reply = await incomingHandler.waitForId(
+                  msgId,
+                  timeout: const Duration(seconds: 5),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Pong received from ${reply['sender_id'] ?? 'device'}',
+                    ),
+                  ),
+                );
+              } catch (_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('No pong (timeout) from $id')),
+                );
+              }
             },
           ),
         );
