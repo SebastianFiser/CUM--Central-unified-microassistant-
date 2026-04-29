@@ -5,15 +5,27 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:mqtt_client/mqtt_browser_client.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'message_builder.dart';
 
 dynamic _client;
 bool _dotenvLoaded = false;
 String? _lastClientId;
 String? _lastServerUri;
+String? _deviceId;
 final _incomingController = StreamController<Map<String, String>>.broadcast();
 Stream<Map<String, String>> get mqttMessageStream => _incomingController.stream;
+// Heartbeat state
+Timer? _heartbeatTimer;
+int _heartbeatInterval = 5; // seconds
+String? _sessionId;
 
-Future<bool> connect({String clientId = 'flutter_client'}) async {
+Future<bool> connect({
+  String clientId = 'flutter_client',
+  String? deviceId,
+}) async {
+  if (deviceId != null) {
+    _deviceId = deviceId;
+  }
   if (!_dotenvLoaded) {
     try {
       await dotenv.load();
@@ -176,12 +188,24 @@ Future<bool> connect({String clientId = 'flutter_client'}) async {
         );
         print('MQTT <- Topic: ${c[0].topic}, Payload: $pt');
         try {
-          _incomingController.add({'topic': c[0].topic, 'payload': pt});
+          _incomingController.add({
+            'topic': c[0].topic,
+            'payload': pt,
+            'time': DateTime.now().toIso8601String(),
+          });
         } catch (_) {}
       });
+      // Subscribe to channel topics so UI receives raw messages
+      try {
+        // Subscribe to our app namespace; adjust as needed
+        _client!.subscribe('cum/#', MqttQos.atMostOnce);
+        print('Subscribed to cum/#');
+      } catch (e) {
+        print('Subscribe failed: $e');
+      }
       // Publish a small debug message so we can verify arrival in HiveMQ
       // Also schedule a delayed debug publish to ensure frames are flushed
-      void _sendDebugPublish() {
+      void sendDebugPublish() {
         try {
           final debugPayload = jsonEncode({
             'source': 'flutter',
@@ -197,9 +221,12 @@ Future<bool> connect({String clientId = 'flutter_client'}) async {
       }
 
       // immediate attempt
-      _sendDebugPublish();
+      sendDebugPublish();
       // delayed attempt after 500ms
-      Future.delayed(Duration(milliseconds: 500), () => _sendDebugPublish());
+      Future.delayed(
+        const Duration(milliseconds: 500),
+        () => sendDebugPublish(),
+      );
       return true;
     } else {
       print('MQTT connection failed: ${_client!.connectionStatus}');
@@ -215,6 +242,12 @@ Future<bool> connect({String clientId = 'flutter_client'}) async {
   }
 }
 
+String getSessionId() {
+  _sessionId ??= makeId();
+  return _sessionId!;
+}
+
+//Generates session ID ONCE ONLY (needed for heartbeat logic) why isnt it working ffs
 void disconnect() {
   try {
     _client?.disconnect();
@@ -250,6 +283,7 @@ void _onConnected() {
 void _onDisconnected() {
   try {
     print('MQTT onDisconnected, status=${_client?.connectionStatus}');
+    _stopHeartbeat();
   } catch (_) {
     print('MQTT onDisconnected');
   }
@@ -258,3 +292,44 @@ void _onDisconnected() {
 void _onSubscribed(String topic) {
   print('MQTT subscribed to $topic');
 }
+
+// Heartbeat control
+void _startHeartbeat({String topic = 'cum/command/core'}) {
+  _stopHeartbeat();
+  _sessionId ??= makeId();
+  final sender = _lastClientId ?? 'flutter_client';
+
+  void send() {
+    try {
+      final map = buildHeartBeat(
+        deviceId: _deviceId ?? sender,
+        sessionId: _sessionId!,
+        senderId: sender,
+      );
+      Publish(topic, jsonEncode(map), qos: MqttQos.atLeastOnce);
+      print('Heartbeat sent: ${map['id']}');
+    } catch (e) {
+      print('Heartbeat publish failed: $e');
+    }
+  }
+
+  // send immediately and then periodically
+  send();
+  _heartbeatTimer = Timer.periodic(
+    Duration(seconds: _heartbeatInterval),
+    (_) => send(),
+  );
+}
+
+void _stopHeartbeat() {
+  try {
+    _heartbeatTimer?.cancel();
+  } catch (_) {}
+  _heartbeatTimer = null;
+}
+
+/// Start heartbeat from external caller (e.g. after sending register)
+void startHeartbeat({String topic = 'cum/command/core'}) {
+  _startHeartbeat(topic: topic);
+}
+//why does this file have 47 problems :cry:
