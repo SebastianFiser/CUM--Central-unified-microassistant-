@@ -92,7 +92,6 @@ def main(device_id, core_id, broker, port):
         print(f"[{device_id}] sent register")
 
     def on_message(client, userdata, msg):
-        print("RAW ONCOMING:", msg.payload.decode())
         data = json.loads(msg.payload.decode())
         if data.get("sender_id") == device_id:
             return
@@ -102,6 +101,10 @@ def main(device_id, core_id, broker, port):
             print(f"[{device_id}] ping received id={message_id}")
             publish_pong(client, event_topic, device_id, message_id)
             print(f"[{device_id}] pong sent id={message_id}")
+
+        if data.get("type") == "command" and data.get("action") == "brightness":
+            brightness = data.get("payload", {}).get("value")
+            print(f"[{device_id}] brightness set to {brightness}")
 
     client = mqtt.Client()
     if USERNAME and PASSWORD:

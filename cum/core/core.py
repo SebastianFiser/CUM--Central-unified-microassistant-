@@ -68,10 +68,7 @@ def console():
                 short_id, value_str = command.split(" ", 2)[1:]
                 value = int(value_str)
                 result = controller.send_brightness(client, short_id, value)
-                if result:
-                    safe_log(f"Brightness command sent to [{short_id}] with value {value}")
-                else:
-                    safe_log("error sending brightness command")
+                safe_log(f"Brightness command sent to [{short_id}] with value {value}")
             except ValueError:
                 safe_log("Invalid brightness value. Please enter an integer between 0 and 100.")
             except Exception as e:
