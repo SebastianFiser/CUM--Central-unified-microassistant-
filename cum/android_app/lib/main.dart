@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'screens/FancyA.dart';
 import 'screens/FancyB.dart';
 import 'screens/deviceList.dart';
+import 'incoming_handler.dart';
 
 var uuid = const Uuid();
 String device_id = 'flutter_device_${make_id()}';
@@ -65,11 +66,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final List<Widget> _pages = [
-    ChannelFeed(), //0
-    ConsoleScreen(), //1
-    FancyA(), //2
-    FancyB(), //3
-    DeviceList(), //4
+    ChannelFeed(), //0 For all msgs in channel
+    ConsoleScreen(), //1 for sending comms manually
+    FancyA(), //2 future app design
+    FancyB(), //3 -||-
+    DeviceList(), //4 list of devices and button shortcuts
   ];
   void _onTap(int idx) => setState(() => _selectedIndex = idx);
 
@@ -118,20 +119,23 @@ class ChannelFeed extends StatefulWidget {
 
 class _ChannelFeedState extends State<ChannelFeed> {
   final List<Map<String, String>> _msg = [];
-  StreamSubscription<Map<String, String>>? _sub;
+  MsgHandler? _feedHandler;
 
   @override
   void initState() {
     super.initState();
-    _sub = mqttMessageStream.listen((m) {
-      setState(() => _msg.insert(0, m));
-    });
+    _feedHandler = (m) {
+      final topic = m['topic'] ?? 'cum';
+      final payload = m['payload'] ?? jsonEncode(m);
+      setState(() => _msg.insert(0, {'topic': topic, 'payload': payload}));
+    };
+    incomingHandler.addGlobalHandler(_feedHandler!);
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
-    _sub = null;
+    if (_feedHandler != null)
+      incomingHandler.removeGlobalHandler(_feedHandler!);
     super.dispose();
   }
 

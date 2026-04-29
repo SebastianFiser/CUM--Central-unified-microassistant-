@@ -54,8 +54,6 @@ Map<String, dynamic> buildPing({
     'session_id': sessionId,
     'type': 'command',
     'action': 'ping',
-    'payload': {'device_id': deviceId},
+    'payload': {},
   };
 }
-
-//this sends new device id every time so the heartbeats dont get added + the sender isnt registered
