@@ -35,6 +35,7 @@ String _platformName() {
     case TargetPlatform.windows:
       return 'windows';
   }
+  return 'unknown';
 }
 
 String generateSenderId(String deviceId) {
@@ -78,3 +79,4 @@ void connectAndRegister(String deviceId, {String? senderId}) async {
 }
 
 //WHY CANT YOU WORK GOD I DONT UNDERSTAND IT
+//PS it does work now

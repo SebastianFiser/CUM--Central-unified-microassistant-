@@ -7,6 +7,7 @@ import 'mqtt_client.dart';
 import 'dart:convert';
 import 'screens/FancyA.dart';
 import 'screens/FancyB.dart';
+import 'screens/deviceList.dart';
 
 var uuid = const Uuid();
 String device_id = 'flutter_device_${make_id()}';
@@ -68,6 +69,7 @@ class _HomePageState extends State<HomePage> {
     ConsoleScreen(), //1
     FancyA(), //2
     FancyB(), //3
+    DeviceList(), //4
   ];
   void _onTap(int idx) => setState(() => _selectedIndex = idx);
 
@@ -76,7 +78,13 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          ['Channel', 'Console', 'Fancy A', 'Fancy B'][_selectedIndex],
+          [
+            'Channel',
+            'Console',
+            'Fancy A',
+            'Fancy B',
+            'Devices',
+          ][_selectedIndex],
         ),
       ),
       body: _pages[_selectedIndex],
@@ -94,6 +102,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.phone_iphone),
             label: 'Fancy B',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.devices), label: 'Devices'),
         ],
       ),
     );

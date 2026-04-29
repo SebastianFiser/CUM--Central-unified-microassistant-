@@ -40,4 +40,22 @@ Map<String, dynamic> buildHeartBeat({
     },
   };
 }
-//this sends new device id every time so the heartbeats dont get added + the sender isnt registered 
+
+// Build a ping command matching device.py semantics
+Map<String, dynamic> buildPing({
+  required String deviceId,
+  required String senderId,
+  required String sessionId,
+  String? messageId,
+}) {
+  return {
+    'id': messageId ?? makeId(),
+    'sender_id': senderId,
+    'session_id': sessionId,
+    'type': 'command',
+    'action': 'ping',
+    'payload': {'device_id': deviceId},
+  };
+}
+
+//this sends new device id every time so the heartbeats dont get added + the sender isnt registered
