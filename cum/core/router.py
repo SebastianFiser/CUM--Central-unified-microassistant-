@@ -70,6 +70,18 @@ def handle_heartbeat(client, data, message_id, logger):
     
     device = heartbeat_device(device_id, session_id)
     if device is None:
+        # Try to find a registered device by sender_id mapping and accept heartbeat
+        from registry import find_device_id_by_sender
+        sender = data.get("sender_id")
+        if sender:
+            mapped = find_device_id_by_sender(sender)
+            if mapped:
+                device = heartbeat_device(mapped, session_id)
+                if device is not None:
+                    logger(f"heartbeat accepted via sender mapping: {mapped} (sender: {sender}) session: {session_id}")
+                    publish_event(client, "heartbeat_ack", {"device_id": mapped}, message_id)
+                    return
+
         logger(f"stale or unknown heartbeat ignored: {device_id} session: {session_id}")
         return
 

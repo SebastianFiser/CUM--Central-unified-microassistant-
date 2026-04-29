@@ -86,3 +86,11 @@ def get_device(device_id: str):
         if d.meta.get("short_id") == device_id:
             return d.to_dict()
     return None
+
+
+def find_device_id_by_sender(sender_id: str):
+    """Return the registered device_id for a given sender_id, or None."""
+    for did, d in DEVICES.items():
+        if d.sender_id == sender_id:
+            return did
+    return None
