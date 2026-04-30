@@ -69,8 +69,21 @@ class IncomingHandler {
     // complete waiters by id
     final msgId = doc['id'] as String?;
     if (msgId != null && _waitingById.containsKey(msgId)) {
-      final c = _waitingById.remove(msgId);
-      if (c != null && !c.isCompleted) c.complete(doc);
+      // ignore local echoes: if the incoming message comes from this client
+      // (same device/client id), don't complete the waiter as it's our own publish
+      final sender = doc['sender_id'] as String?;
+      try {
+        final myId = getDeviceId();
+        if (sender != null && myId != null && sender == myId) {
+          // skip completing waiters for our own message
+        } else {
+          final c = _waitingById.remove(msgId);
+          if (c != null && !c.isCompleted) c.complete(doc);
+        }
+      } catch (_) {
+        final c = _waitingById.remove(msgId);
+        if (c != null && !c.isCompleted) c.complete(doc);
+      }
     }
 
     // dispatch by action or event names

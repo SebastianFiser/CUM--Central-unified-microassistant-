@@ -40,9 +40,9 @@ controller.send_status_request(client, short_id)
 
 ## Getting Started
 
-1. Start the server: `python3 cum/core/main.py`
-2. Connect a device or client (e.g., Android app)
-3. Control devices via CLI or API
+1. Start the server: `python3 cum/core/main.py` you have to have requirements.txt installed (on linux use venv)
+2. Connect a device or client (best to run debug web server on localhost. bui there is a compiled project)
+3. Control devices via CLI or API. Best to use in app terminal. combination of both pythno scripts and app is the best
 
 ---
 

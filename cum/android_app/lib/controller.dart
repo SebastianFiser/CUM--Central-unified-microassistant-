@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'mqtt_client.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:async';
 import 'message_builder.dart';
 
 var uuid = const Uuid();
@@ -78,5 +79,66 @@ void connectAndRegister(String deviceId, {String? senderId}) async {
   }
 }
 
-//WHY CANT YOU WORK GOD I DONT UNDERSTAND IT
-//PS it does work now
+/// Fetch short_id for a given `deviceId` from core.
+/// Uses the `list_devices` command and listens for `devices_list` or
+/// `device_registered` events on the shared MQTT stream.
+Future<String?> fetchShortId(
+  String deviceId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final completer = Completer<String?>();
+  StreamSubscription? sub;
+
+  sub = mqttMessageStream.listen((msg) {
+    try {
+      final payloadStr = msg['payload'] ?? '';
+      final data = jsonDecode(payloadStr) as Map<String, dynamic>;
+      if (data['type'] == 'event') {
+        final ev = data['event'];
+        final pl = data['payload'] as Map<String, dynamic>;
+        if (ev == 'devices_list') {
+          final deviceEntry = pl[deviceId];
+          if (deviceEntry != null) {
+            final short = (deviceEntry['meta'] ?? {})['short_id'];
+            if (short != null) {
+              if (!completer.isCompleted) completer.complete(short as String?);
+              sub?.cancel();
+            }
+          }
+        } else if (ev == 'device_registered' || ev == 'heartbeat_ack') {
+          final dev = (data['payload'] ?? {}) as Map<String, dynamic>;
+          if (dev['device_id'] == deviceId && dev.containsKey('short_id')) {
+            if (!completer.isCompleted)
+              completer.complete(dev['short_id'] as String?);
+            sub?.cancel();
+          }
+        }
+      }
+    } catch (_) {}
+  });
+
+  // Send list_devices command to core
+  final req = {
+    'id': make_id(),
+    'sender_id': getDeviceId() ?? 'flutter_client',
+    'session_id': getSessionId(),
+    'type': 'command',
+    'action': 'list_devices',
+    'payload': {},
+  };
+  Publish(COMMAND_TOPIC, jsonEncode(req));
+
+  try {
+    return await completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        sub?.cancel();
+        return null;
+      },
+    );
+  } finally {
+    try {
+      await sub?.cancel();
+    } catch (_) {}
+  }
+}
