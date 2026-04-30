@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
-import 'package:mqtt_client/mqtt_browser_client.dart';
+// import 'package:mqtt_client/mqtt_browser_client.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'message_builder.dart';
 
@@ -60,108 +60,33 @@ Future<bool> connect({
     secure = uri.scheme == 'wss';
   } else {
     host = hostFromEnv ?? 'localhost';
-    if (kIsWeb) {
-      port =
-          int.tryParse(wsPortFromEnv ?? '') ??
-          int.tryParse(portFromEnv ?? '') ??
-          8884;
-    } else {
-      port = int.tryParse(portFromEnv ?? '') ?? 1883;
-    }
-    if (kIsWeb) {
-      useWebSocket = true;
-      secure = true;
-    } else {
-      secure = (port == 8883 || port == 8884);
-    }
+    port = int.tryParse(portFromEnv ?? '') ?? 1883;
+    secure = (port == 8883 || port == 8884);
   }
 
   _lastClientId = clientId;
-  if (kIsWeb) {
-    // For web builds use the browser client with full server URI
-    final serverUri = wsUrl != null && wsUrl.isNotEmpty
-        ? wsUrl
-        : '${secure ? 'wss' : 'ws'}://$host:$port${path ?? '/mqtt'}';
-    print('MQTT(Web) serverUri: $serverUri');
-    _lastServerUri = serverUri;
-    print('MQTT username: ${username ?? '<none>'}');
+  print(
+    'MQTT(TCP) host: $host port: $port useWebSocket: $useWebSocket secure: $secure',
+  );
+  print('MQTT username: ${username ?? '<none>'}');
+  _client = MqttServerClient.withPort(host, clientId, port);
+  _client.logging(on: loggingOn);
+  _client.keepAlivePeriod = 20;
+  _client.onConnected = _onConnected;
+  _client.onDisconnected = _onDisconnected;
+  _client.onSubscribed = _onSubscribed;
 
-    // Some versions of mqtt_client parse the provided server string
-    // differently and may fall back to port 1883. To ensure the
-    // browser WS connection uses the correct port and path, create
-    // the browser client with the host and then set port/path via
-    // dynamic properties where available.
-    _client = MqttBrowserClient(host, clientId);
-    try {
-      (_client as dynamic).port = port;
-    } catch (_) {
-      // ignore if property not present
+  if (useWebSocket) {
+    _client.useWebSocket = true;
+    _client.websocketProtocols = ['mqtt'];
+    // try to set websocket path if available in this mqtt_client version
+    if (path != null && path.isNotEmpty) {
+      try {
+        (_client as dynamic).websocketPath = path;
+      } catch (_) {}
     }
-    try {
-      (_client as dynamic).websocketPath = path ?? '/mqtt';
-    } catch (_) {}
-    try {
-      (_client as dynamic).websocketProtocols = ['mqtt'];
-    } catch (_) {}
-    try {
-      (_client as dynamic).secure = secure;
-    } catch (_) {}
-    try {
-      // some implementations expose 'server' as hostname or accept a full URI
-      // set it to the full serverUri (including scheme) to avoid "incorrect scheme" parsing
-      (_client as dynamic).server = serverUri;
-    } catch (_) {}
-    String configuredServer;
-    int configuredPort;
-    String configuredPath;
-    try {
-      configuredServer = (_client as dynamic).server ?? host;
-    } catch (_) {
-      configuredServer = host;
-    }
-    try {
-      configuredPort = (_client as dynamic).port ?? port;
-    } catch (_) {
-      configuredPort = port;
-    }
-    try {
-      configuredPath = (_client as dynamic).websocketPath ?? path ?? '/mqtt';
-    } catch (_) {
-      configuredPath = path ?? '/mqtt';
-    }
-    print(
-      'MQTT(Web) client configured server=$configuredServer port=$configuredPort path=$configuredPath',
-    );
-    _client.logging(on: loggingOn);
-    _client.keepAlivePeriod = 20;
-    _client.onConnected = _onConnected;
-    _client.onDisconnected = _onDisconnected;
-    _client.onSubscribed = _onSubscribed;
-    // also try to publish a debug message from onConnected to ensure underlying WS is open
   } else {
-    print(
-      'MQTT(TCP) host: $host port: $port useWebSocket: $useWebSocket secure: $secure',
-    );
-    print('MQTT username: ${username ?? '<none>'}');
-    _client = MqttServerClient.withPort(host, clientId, port);
-    _client.logging(on: loggingOn);
-    _client.keepAlivePeriod = 20;
-    _client.onConnected = _onConnected;
-    _client.onDisconnected = _onDisconnected;
-    _client.onSubscribed = _onSubscribed;
-
-    if (useWebSocket) {
-      _client.useWebSocket = true;
-      _client.websocketProtocols = ['mqtt'];
-      // try to set websocket path if available in this mqtt_client version
-      if (path != null && path.isNotEmpty) {
-        try {
-          (_client as dynamic).websocketPath = path;
-        } catch (_) {}
-      }
-    } else {
-      _client.secure = secure;
-    }
+    _client.secure = secure;
   }
 
   var connMessage = MqttConnectMessage()
