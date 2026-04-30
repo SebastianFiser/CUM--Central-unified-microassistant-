@@ -57,3 +57,20 @@ Map<String, dynamic> buildPing({
     'payload': {},
   };
 }
+
+// Build an echo command (used by Console)
+Map<String, dynamic> buildEcho({
+  required String senderId,
+  required String sessionId,
+  required String message,
+  String? messageId,
+}) {
+  return {
+    'id': messageId ?? makeId(),
+    'sender_id': senderId,
+    'session_id': sessionId,
+    'type': 'command',
+    'action': 'echo',
+    'payload': {'text': message},
+  };
+}

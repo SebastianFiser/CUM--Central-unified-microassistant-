@@ -17,4 +17,8 @@ HIVEMQ_PASSWORD=$HIVEMQ_PASSWORD
 HIVEMQ_WS_URL=$HIVEMQ_WS_URL
 EOF
 
+echo "copying into app folder"
+cp .env android_app/.env
+echo "copied .env"
+
 echo ".env file created with the provided HiveMQ cluster details"

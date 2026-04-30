@@ -4,11 +4,14 @@ import 'controller.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'mqtt_client.dart';
+import 'package:mqtt_client/mqtt_client.dart';
 import 'dart:convert';
+import 'message_builder.dart';
 import 'screens/FancyA.dart';
 import 'screens/FancyB.dart';
 import 'screens/deviceList.dart';
 import 'incoming_handler.dart';
+import 'widgets/console_screen.dart';
 
 var uuid = const Uuid();
 String device_id = 'flutter_device_${make_id()}';
@@ -26,6 +29,7 @@ Future<void> main() async {
   // generate sender/client id now that bindings are initialized
   SenderID = generateSenderId(device_id);
   runApp(const MyApp());
+  // connect and register in background
   connectAndRegister(device_id, senderId: SenderID);
 }
 
@@ -88,7 +92,7 @@ class _HomePageState extends State<HomePage> {
           ][_selectedIndex],
         ),
       ),
-      body: _pages[_selectedIndex],
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onTap,
@@ -117,7 +121,8 @@ class ChannelFeed extends StatefulWidget {
   _ChannelFeedState createState() => _ChannelFeedState();
 }
 
-class _ChannelFeedState extends State<ChannelFeed> {
+class _ChannelFeedState extends State<ChannelFeed>
+    with AutomaticKeepAliveClientMixin<ChannelFeed> {
   final List<Map<String, String>> _msg = [];
   MsgHandler? _feedHandler;
 
@@ -141,6 +146,7 @@ class _ChannelFeedState extends State<ChannelFeed> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required for AutomaticKeepAliveClientMixin
     return ListView.builder(
       itemCount: _msg.length,
       itemBuilder: (_, i) {
@@ -152,68 +158,12 @@ class _ChannelFeedState extends State<ChannelFeed> {
       },
     );
   }
-}
-
-class ConsoleScreen extends StatefulWidget {
-  const ConsoleScreen({super.key});
 
   @override
-  _ConsoleScreenState createState() => _ConsoleScreenState();
+  bool get wantKeepAlive => true;
 }
 
-class _ConsoleScreenState extends State<ConsoleScreen> {
-  final TextEditingController _ctrl = TextEditingController();
-  final List<String> _history = [];
-
-  void _send() {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) return;
-    final payload = jsonEncode({
-      'id': make_id(),
-      'sender_id': SenderID,
-      'session_id': make_id(),
-      'type': 'command',
-      'action': 'echo',
-      'payload': {'message': text},
-    });
-    Publish('cum/command/core', payload);
-    setState(() {
-      _history.insert(0, '> $text');
-      _ctrl.clear();
-    });
-  }
-
-  @override
-  Widget build(BuildContext ctx) => Column(
-    children: [
-      Expanded(
-        child: ListView.builder(
-          itemCount: _history.length,
-          itemBuilder: (_, i) => ListTile(title: Text(_history[i])),
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                onSubmitted: (_) => _send(),
-                decoration: const InputDecoration(
-                  hintText: 'Enter command',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(onPressed: _send, child: const Text('Send')),
-          ],
-        ),
-      ),
-    ],
-  );
-}
+// ConsoleScreen moved to widgets/console_screen.dart
 
 class FancyA extends StatelessWidget {
   const FancyA({super.key});
@@ -232,3 +182,4 @@ class FancyB extends StatelessWidget {
     return const Center(child: Text('Fancy B (placeholder)'));
   }
 }
+//working 24/7 hire me please i need money to buy a new pc and a new phone and also food and also maybe a car so i can drive to work and also pay for my internet so i can keep working and also maybe a house so i can live there and not be homeless and also maybe some clothes so i can wear them to work and also maybe a bed so i can sleep well and wake up refreshed for work and also maybe some healthcare so i can stay healthy and not get sick and miss work and also maybe some entertainment so i can relax after work and not get burned out and also maybe some savings so i can have a safety net in case of emergencies and also maybe some education so i can keep learning new skills and advance in my career and also maybe some travel so i can explore new places and cultures and broaden my horizons.
